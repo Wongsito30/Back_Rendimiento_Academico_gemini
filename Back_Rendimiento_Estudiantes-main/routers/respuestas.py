@@ -1,0 +1,80 @@
+from fastapi import APIRouter, Request ,HTTPException
+from fastapi.responses import JSONResponse
+from typing import List
+from starlette.responses import RedirectResponse
+from sqlalchemy.orm import session
+from fastapi.params import Depends
+
+from BD.Connn import engine, sessionlocal
+import BD.schemas as page_schemas
+import BD.Connn as page_conexion
+import BD.modelos as page_models
+from geminiAPI import prompt_gen
+
+
+page_models.Base.metadata.create_all(bind=engine)
+router = APIRouter()
+
+
+def get_respuestas():
+    try:
+        db = sessionlocal()
+        yield db
+    finally:
+        db.close()
+
+@router.get("/respuestas")
+async def Main():
+    return RedirectResponse(url="/docs/")
+
+@router.get("/gemini")
+async def gemini_AI(db:session=Depends(get_respuestas)):
+    # Seleccionar solo las columnas de preguntas y ponderación
+    preguntas = db.query(page_models.Preguntas.pregunta).all()
+    ponderaciones = db.query(page_models.Respuestas.ponderacion).all()
+    
+    # Devolver las columnas en un formato adecuado
+    data = {"preguntas": [pregunta[0] for pregunta in preguntas], "ponderaciones": [ponderacion[0] for ponderacion in ponderaciones]}
+
+    prompt = "De estas preguntas y respuestas ayudame a predecir el rendimiento academico, las respuestas son del 1-5"
+    return prompt_gen(prompt, data)
+
+@router.get("/verRespuestas/", response_model=List[page_schemas.respuestas])
+async def show_Respuestas(db:session=Depends(get_respuestas)):
+    respuesta = db.query(page_models.Respuestas).all()
+    return respuesta
+
+@router.post("/registrarRespuestas/",response_model=page_schemas.respuestas)
+def create_respuestas(entrada:page_schemas.respuestas,db:session=Depends(get_respuestas)):
+   respuestas = page_models.Respuestas(id_cuestionario = entrada.id_cuestionario, id_pregunta = entrada.id_pregunta, nickname = entrada.nickname, ponderacion = entrada.ponderacion)
+   db.add(respuestas)
+   db.commit()
+   db.refresh(respuestas)
+   return respuestas
+
+@router.put("/CambiarRespuestas/{Respuesta_id}",response_model=page_schemas.respuestas)
+def mod_respuestas(respuestasid: int, entrada:page_schemas.respuestas,db:session=Depends(get_respuestas)):
+    respuestas = db.query(page_models.Respuestas).filter_by(id=respuestasid).first()
+    respuestas.id_cuestionario = entrada.id_cuestionario 
+    respuestas.id_pregunta = entrada.id_pregunta
+    respuestas.nickname = entrada.nickname
+    respuestas.ponderacion = entrada.ponderacion
+    db.commit()
+    db.refresh(respuestas)
+    return respuestas
+
+@router.put("/CambiarRespuesta/{Id_respuesta}",response_model=page_schemas.cambiarRespuestas)
+def mod_RespuestasUsuario(idrespuesta: int, entrada:page_schemas.cambiarRespuestas,db:session=Depends(get_respuestas)):
+    respuestas = db.query(page_models.Respuestas).filter_by(id=idrespuesta).first()
+    respuestas.ponderacion = entrada.ponderacion
+    db.commit()
+    db.refresh(respuestas)
+    return respuestas
+
+@router.delete("/EliminarRespuestas/{respuestas_id}",response_model=page_schemas.respuesta)
+def del_respuestas(respuestasid: int,db:session=Depends(get_respuestas)):
+    respuestas = db.query(page_models.Respuestas).filter_by(id=respuestasid).first()
+    db.delete(respuestas)
+    db.commit()
+    respuesta = page_schemas.respuesta(mensaje="Eliminado exitosamente")
+    return respuesta

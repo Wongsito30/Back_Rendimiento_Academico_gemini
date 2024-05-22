@@ -28,6 +28,11 @@ async def show_preguntas(db:session=Depends(get_pregunta)):
     pregunta = db.query(page_models.Preguntas).all()
     return pregunta
 
+@router.get("/verPreguntaPorIDCuestionario/{cuestionarioid}", response_model=page_schemas.Preguntamostrar)
+async def show_preguntas(idcuestionario: int, db:session=Depends(get_pregunta)):
+    pregunta = db.query(page_models.Preguntas).filter_by(id_cuestionario=idcuestionario).first()
+    return pregunta
+
 @router.post("/registrarPregunta/",response_model=page_schemas.PreguntaBase)
 def create_preguntas(entrada:page_schemas.PreguntaBase,db:session=Depends(get_pregunta)):
    pregunta = page_models.Preguntas(id_cuestionario = entrada.id_cuestionario, pregunta = entrada.pregunta, tipo = entrada.tipo)

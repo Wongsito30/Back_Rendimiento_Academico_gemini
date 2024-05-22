@@ -27,11 +27,16 @@ def get_respuestas():
 async def Main():
     return RedirectResponse(url="/docs/")
 
-@router.get("/gemini")
-async def gemini_AI(db:session=Depends(get_respuestas)):
+@router.get("/VerRespuestasPorNickname/{Nickname}")
+async def VER_Res_nickname(Nickname: str,db:session=Depends(get_respuestas)):
+    ponderaciones = db.query(page_models.Respuestas).filter_by(nickname=Nickname).first()
+    return ponderaciones
+
+@router.get("/gemini/{Respuesta_id}/{Nickname}")
+async def gemini_AI(idcuestionario: int, Nickname: str,db:session=Depends(get_respuestas)):
     # Seleccionar solo las columnas de preguntas y ponderación
-    preguntas = db.query(page_models.Preguntas.pregunta).all()
-    ponderaciones = db.query(page_models.Respuestas.ponderacion).all()
+    preguntas = db.query(page_models.Preguntas.pregunta).filter_by(id_cuestionario=idcuestionario).all()
+    ponderaciones = db.query(page_models.Respuestas.ponderacion).filter_by(id_cuestionario=idcuestionario, nickname=Nickname).all()
     
     # Devolver las columnas en un formato adecuado
     data = {"preguntas": [pregunta[0] for pregunta in preguntas], "ponderaciones": [ponderacion[0] for ponderacion in ponderaciones]}

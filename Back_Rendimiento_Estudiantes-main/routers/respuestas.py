@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request ,HTTPException
+from fastapi import APIRouter, Request ,HTTPException, status
 from fastapi.responses import JSONResponse
 from typing import List
 from starlette.responses import RedirectResponse
@@ -37,12 +37,18 @@ async def gemini_AI(idcuestionario: int, Nickname: str,db:session=Depends(get_re
     # Seleccionar solo las columnas de preguntas y ponderación
     preguntas = db.query(page_models.Preguntas.pregunta).filter_by(id_cuestionario=idcuestionario).all()
     ponderaciones = db.query(page_models.Respuestas.ponderacion).filter_by(id_cuestionario=idcuestionario, nickname=Nickname).all()
-    
+    if not preguntas and not ponderaciones: raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="no se pudo encontrar preguntas y/o respuestas")
     # Devolver las columnas en un formato adecuado
     data = {"preguntas": [pregunta[0] for pregunta in preguntas], "ponderaciones": [ponderacion[0] for ponderacion in ponderaciones]}
 
     prompt = "De estas preguntas y respuestas ayudame a predecir el rendimiento academico, las respuestas son del 1-5"
-    return prompt_gen(prompt, data)
+    respuesta = prompt_gen(prompt, data)
+    res = page_models.Resultados(nickname=Nickname, id_cuestionario=idcuestionario, resultados=respuesta)
+    if not res: raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="no se pudo guardar el resultado")
+    db.add(res)
+    db.commit()
+    db.refresh(res)
+    return respuesta
 
 @router.get("/verRespuestas/", response_model=List[page_schemas.respuestas])
 async def show_Respuestas(db:session=Depends(get_respuestas)):

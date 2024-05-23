@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, LargeBinary, Float, Date, ForeignKey
-from sqlalchemy.dialects.mysql import LONGTEXT
+from sqlalchemy.dialects.mysql import LONGTEXT, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -19,12 +19,13 @@ class Resultados(Base):
     __tablename__ = 'resultados'
 
     id = Column(Integer, primary_key=True, index=True)
+    nickname = Column(String(50))
     id_usuario = Column(Integer, ForeignKey('usuarios.id'))
     usuario = relationship("Usuarios", back_populates="resultados")
     
     id_cuestionario = Column(Integer, ForeignKey('cuestionarios.id'))
     cuestionario = relationship("Cuestionarios", back_populates="resultados")
-    resultados = Column(String(1000))
+    resultados = Column(JSON)
 
 class Admin(Base):
     __tablename__ = 'admins'

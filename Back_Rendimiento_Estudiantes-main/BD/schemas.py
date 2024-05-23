@@ -6,12 +6,12 @@ class ResultadosBase(BaseModel):
     resultados: str
 
 class ResultadosCreate(ResultadosBase):
-    id_usuario: int
+    nickname: str
     id_cuestionario: int
 
 class Resultados(ResultadosBase):
     id: int
-    id_usuario: int
+    nickname: str
     id_cuestionario: int
     
     class Config:
